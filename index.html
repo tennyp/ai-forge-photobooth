@@ -502,13 +502,9 @@ async function transform(){
     clearInterval(piv); pf.style.width='100%';
     wildTheme=null;
 
-    // Preserve original face — paste back onto AI result
-    document.getElementById('lsub').textContent='Preserving your face...';
-    const preservedUrl=await preserveFace(capturedCanvas, imgUrl);
-    
-    // Show preserved result on screen
-    resultUrl=preservedUrl; downloadUrl=preservedUrl;
-    document.getElementById('img-after').src=preservedUrl;
+    // Show AI image on screen
+    resultUrl=imgUrl; downloadUrl=imgUrl;
+    document.getElementById('img-after').src=imgUrl;
     showP('card');
     document.getElementById('btn-fs').style.display='inline-block';
     document.getElementById('btn-snap').disabled=false;
