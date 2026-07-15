@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>AI Forge Photo Booth</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--teal:#1A7F6E;--tl:#0d2b24;--tb:#5DCAA5;--ink:#0D1117;--i2:#161b22;--i3:#21262d;--amber:#D97706;--txt:#fff;--t2:#94A3B8;--t3:#475569}
+html,body{height:100%;overflow:hidden;background:var(--ink);font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;color:var(--txt)}
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .3s}
+.scr.on{opacity:1;pointer-events:all}
+/* SETUP */
+#setup{align-items:center;justify-content:center;gap:12px;padding:2rem;background:var(--ink);overflow-y:auto}
+.logo-txt{font-size:28px;font-weight:800;letter-spacing:2px;color:var(--tb)}
+.logo-sub{font-size:10px;color:var(--t3);letter-spacing:5px;margin-top:2px}
+.s-title{font-size:18px;font-weight:700;text-align:center}
+.box{width:100%;max-width:420px;background:var(--i2);border:1px solid var(--i3);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:9px}
+.box-t{font-size:11px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.inp{width:100%;background:var(--ink);border:1px solid var(--i3);border-radius:8px;padding:10px 12px;color:var(--txt);font-size:13px;outline:none}
+.inp:focus{border-color:var(--teal)}
+.hint{font-size:11px;color:var(--t3);line-height:1.5}
+.hint a{color:var(--tb)}
+.hint b{color:var(--tb)}
+.saved-badge{display:inline-flex;align-items:center;gap:5px;background:var(--tl);border:1px solid var(--teal);color:var(--tb);font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px}
+.btn-go{width:100%;max-width:420px;background:var(--teal);color:#fff;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:700;cursor:pointer}
+/* BOOTH */
+#booth{flex-direction:row;background:var(--ink)}
+.left{width:47%;display:flex;flex-direction:column;padding:10px;gap:8px;border-right:1px solid var(--i3);min-width:0}
+.right{flex:1;display:flex;flex-direction:column;padding:10px;gap:8px;overflow-y:auto;min-width:0;-webkit-overflow-scrolling:touch}
+/* Camera */
+.cambox{position:relative;background:#000;border-radius:10px;overflow:hidden;flex:1;min-height:0}
+#vid{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+#cnv{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .08s}
+.cdlayer{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
+.cdnum{font-size:100px;font-weight:800;color:#fff;text-shadow:0 0 40px rgba(26,127,110,.9)}
+.cammsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(0,0,0,.85);font-size:13px;color:var(--t2);text-align:center;padding:1rem}
+/* Themes */
+#cat-tabs{display:flex;gap:4px;overflow-x:auto;flex-wrap:wrap;padding-bottom:2px}
+#cat-tabs::-webkit-scrollbar{display:none}
+#cat-tabs button{flex-shrink:0;padding:4px 10px;border-radius:20px;border:1px solid var(--i3);background:transparent;color:var(--t3);font-size:10px;cursor:pointer;font-weight:500;white-space:nowrap;transition:all .12s}
+#cat-tabs button.on{background:var(--tl);border-color:var(--teal);color:var(--tb)}
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-height:140px;overflow-y:auto}
+.tgrid::-webkit-scrollbar{width:2px}
+.tgrid::-webkit-scrollbar-thumb{background:var(--i3)}
+.tbtn{background:var(--i2);border:1px solid var(--i3);border-radius:7px;padding:7px 3px;color:var(--t2);font-size:9.5px;font-weight:500;cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .12s;line-height:1.2}
+.tbtn span:first-child{font-size:18px}
+.tbtn.on{background:var(--tl);border-color:var(--teal);color:var(--tb)}
+.srow{display:flex;align-items:center;gap:7px}
+.srow label{font-size:9px;color:var(--t3);white-space:nowrap}
+.srow input[type=range]{flex:1;accent-color:var(--teal);height:3px}
+.srow span{font-size:9px;color:var(--tb);min-width:26px;text-align:right}
+/* Controls */
+.ctrl{display:flex;align-items:center;justify-content:center;gap:10px}
+.btnsnap{width:58px;height:58px;border-radius:50%;background:var(--teal);border:3px solid var(--tb);cursor:pointer;font-size:22px;transition:transform .1s;display:flex;align-items:center;justify-content:center}
+.btnsnap:active{transform:scale(.93)}
+.btnsnap:disabled{background:#2a2a2a;border-color:#3a3a3a;opacity:.5}
+.btnsm{background:var(--i2);border:1px solid var(--i3);border-radius:7px;color:var(--t2);padding:7px 11px;font-size:11px;cursor:pointer;transition:all .12s}
+.btnsm:active{background:var(--i3)}
+.btn-row{display:flex;gap:8px}
+.btn-reset{flex:1;background:#0d2b24;border:1px solid var(--teal);border-radius:8px;color:var(--tb);padding:8px;font-size:11px;font-weight:600;cursor:pointer}
+.btn-random{background:#1c1205;border:1px solid var(--amber);border-radius:8px;color:var(--amber);padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+/* Result */
+.rempty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--t3);font-size:12px;text-align:center}
+.rload{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:1rem}
+.spin{width:44px;height:44px;border:3px solid var(--i3);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltxt{font-size:13px;color:var(--t2);font-weight:500}
+.lsub{font-size:11px;color:var(--t3)}
+.prog{width:190px;height:4px;background:var(--i3);border-radius:4px;overflow:hidden}
+.prog-f{height:100%;background:var(--teal);border-radius:4px;transition:width 1.2s linear}
+.rcard{display:none;flex-direction:column;gap:8px}
+.aiimg{position:relative;border-radius:10px;overflow:hidden}
+.aiimg img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#000}
+.img-lbl{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);color:var(--tb);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;border:1px solid var(--teal)}
+.qr-box{background:var(--i2);border:1px solid var(--i3);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center}
+.qr-img-wrap{flex-shrink:0;background:#fff;border-radius:6px;padding:4px;width:78px;height:78px;display:flex;align-items:center;justify-content:center}
+.qr-spin{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3)}
+.spin-sm{width:14px;height:14px;border:2px solid var(--i3);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+.qr-info{flex:1;min-width:0}
+.qr-title{font-size:12px;font-weight:600;margin-bottom:3px}
+.qr-sub{font-size:10px;color:var(--t2);line-height:1.5}
+.ractions{display:flex;gap:6px}
+.bact{flex:1;border-radius:8px;padding:9px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid}
+.bprim{background:var(--tl);border-color:var(--teal);color:var(--tb)}
+.bprim:active{background:var(--teal);color:#fff}
+.bghost{background:transparent;border-color:var(--i3);color:var(--t2)}
+.bghost:active{background:var(--i3)}
+.rerr{background:#1c1010;border:1px solid #4a1515;border-radius:9px;padding:11px;display:none;flex-direction:column;gap:5px}
+.rerr-t{color:#f87171;font-weight:700;font-size:12px}
+.rerr-m{color:var(--t2);font-size:11px;line-height:1.5;word-break:break-all}
+/* FULLSCREEN TV */
+#fs{background:#000;align-items:center;justify-content:center}
+.fswrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative}
+#cnvfs{max-width:100%;max-height:100%;display:block}
+.fs-back{position:absolute;top:16px;left:16px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;z-index:10}
+.fs-bbar{position:absolute;bottom:0;left:0;right:0;padding:14px;display:flex;align-items:center;justify-content:center;gap:12px;background:rgba(0,0,0,.55)}
+.fs-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:9px;color:#fff;padding:10px 18px;font-size:13px;cursor:pointer}
+.fs-next{background:var(--teal);border:none;border-radius:9px;color:#fff;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer}
+/* TV Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:none;align-items:center;justify-content:center;padding:1.5rem}
+.modal-bg.on{display:flex}
+.modal{background:var(--i2);border:1px solid var(--i3);border-radius:14px;padding:18px;max-width:360px;width:100%;display:flex;flex-direction:column;gap:10px}
+.modal-t{font-size:14px;font-weight:700}
+.modal-step{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--ink);border-radius:8px}
+.modal-num{width:22px;height:22px;border-radius:50%;background:var(--tl);border:1px solid var(--teal);color:var(--tb);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.modal-txt{font-size:11px;color:var(--t2);line-height:1.5}
+.modal-txt b{color:var(--txt)}
+.modal-btns{display:flex;gap:7px}
+.mbtn{flex:1;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid}
+.mbtn-go{background:var(--teal);border-color:var(--teal);color:#fff}
+.mbtn-skip{background:transparent;border-color:var(--i3);color:var(--t2)}
+@media(max-width:700px),(orientation:portrait){
+  #booth{flex-direction:column}
+  .left{width:100%;border-right:none;border-bottom:1px solid var(--i3);flex:none;height:52vh}
+  .right{flex:1;overflow-y:auto}
+  .tgrid{grid-template-columns:repeat(5,1fr);max-height:90px}
+}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div class="scr on" id="setup">
+  <div class="logo-txt">⚡ AI FORGE</div>
+  <div class="logo-sub">PHOTO BOOTH</div>
+  <div class="s-title">Transform Yourself with AI</div>
+
+  <div class="box">
+    <div class="box-t">fal.ai API Key</div>
+    <div class="hint"><b>Get key:</b> <a href="https://fal.ai" target="_blank">fal.ai</a> → Settings → API Keys.<br>$10 credit = ~350 images · Face preserved ✅</div>
+    <div style="display:flex;gap:7px">
+      <input class="inp" type="password" id="api-key" placeholder="Paste fal.ai API key..." autocomplete="off" style="flex:1">
+      <button class="btnsm" onclick="toggleK(this)">Show</button>
+    </div>
+    <div id="key-saved" style="display:none"><div class="saved-badge">✅ Key saved</div></div>
+  </div>
+
+  <div class="box">
+    <div class="box-t">ImgBB Key <span style="font-weight:400;text-transform:none;color:var(--t3)">(free — for QR code)</span></div>
+    <input class="inp" type="password" id="imgbb-key" placeholder="Free at imgbb.com → API" autocomplete="off">
+    <div id="imgbb-saved" style="display:none"><div class="saved-badge">✅ ImgBB key saved</div></div>
+  </div>
+
+  <div class="box">
+    <div class="box-t">Event Label</div>
+    <input class="inp" id="event-label" value="AI Forge 2026 · Cochin">
+  </div>
+
+  <div style="display:flex;gap:8px;width:100%;max-width:420px">
+    <button class="btn-go" style="flex:1" onclick="launch()">🚀 Start Photo Booth</button>
+    <button class="btnsm" onclick="clearKeys()" style="font-size:11px;padding:10px">🗑️ Clear</button>
+  </div>
+</div>
+
+<!-- BOOTH SCREEN -->
+<div class="scr" id="booth">
+  <div class="left">
+    <div class="cambox">
+      <video id="vid" autoplay playsinline muted></video>
+      <canvas id="cnv"></canvas>
+      <div class="flash" id="flash"></div>
+      <div class="cdlayer" id="cdlayer"><div class="cdnum" id="cdnum">3</div></div>
+      <div class="cammsg" id="cammsg"><span style="font-size:36px">📷</span><span>Starting camera...</span><span style="font-size:10px;color:#475569;text-align:center;padding:0 1rem">💡 Tip: Stand facing camera against a plain wall for best results</span></div>
+    </div>
+
+    <div id="cat-tabs"></div>
+    <div class="tgrid" id="tgrid"></div>
+
+    <div>
+      <div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:4px">Transformation Strength</div>
+      <div class="srow">
+        <label>Subtle</label>
+        <input type="range" id="strength" min="60" max="95" value="88" oninput="document.getElementById('sv').textContent=this.value+'%'">
+        <span id="sv">88%</span>
+        <label>Full</label>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <button class="btnsm" id="btn-retry" style="display:none" onclick="resetBooth()">↩</button>
+      <button class="btnsnap" id="btn-snap" onclick="startCD()" disabled>📷</button>
+      <button class="btnsm" id="btn-fs" style="display:none" onclick="showTVModal()">📺 TV</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-reset" onclick="resetBooth()">🔄 New Person</button>
+      <button class="btn-random" onclick="pickRandom()">🎲 Surprise Me!</button>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="rempty" id="rempty">
+      <div style="font-size:48px;opacity:.18">🔮</div>
+      <div style="font-weight:500">Choose a character<br>and take a photo!</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:4px">AI transforms YOU · Scan QR to save</div>
+    </div>
+    <div class="rload" id="rload">
+      <div class="spin"></div>
+      <div class="ltxt" id="ltxt">Transforming...</div>
+      <div class="lsub" id="lsub">AI working its magic · ~25 seconds</div>
+      <div class="prog"><div class="prog-f" id="pf" style="width:0%"></div></div>
+    </div>
+    <div class="rerr" id="rerr" style="display:none">
+      <div class="rerr-t">⚠️ Transformation failed</div>
+      <div class="rerr-m" id="errmsg">Check API key and internet.</div>
+      <button class="btnsm" onclick="resetBooth()" style="width:fit-content;margin-top:4px">↩ Try again</button>
+    </div>
+    <div class="rcard" id="rcard">
+      <div class="aiimg">
+        <img id="img-after" alt="AI transformed">
+        <div class="img-lbl">✨ AI Transformed</div>
+      </div>
+      <div class="qr-box">
+        <div class="qr-img-wrap" id="qr-wrap">
+          <div class="qr-spin"><div class="spin-sm"></div></div>
+        </div>
+        <div class="qr-info">
+          <div class="qr-title">📲 Scan to save!</div>
+          <div class="qr-sub" id="qr-sub">Building your photo...</div>
+          <a id="qr-link" href="#" target="_blank" style="font-size:10px;color:var(--tb);display:none">Open photo →</a>
+        </div>
+      </div>
+      <div class="ractions">
+        <button class="bact bprim" onclick="showTVModal()">📺 Show on TV</button>
+        <button class="bact bghost" onclick="sharePhoto()">📤 Share</button>
+        <button class="bact bghost" onclick="dlResult()">↓ Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FULLSCREEN TV -->
+<div class="scr" id="fs">
+  <button class="fs-back" onclick="closeFS()">← Back</button>
+  <div class="fswrap"><canvas id="cnvfs"></canvas></div>
+  <div class="fs-bbar">
+    <button class="fs-btn" onclick="sharePhoto()">📤 Share</button>
+    <button class="fs-btn" onclick="dlResult()">↓ Save</button>
+    <button class="fs-next" onclick="closeFS();resetBooth()">📷 Next Person</button>
+  </div>
+</div>
+
+<!-- TV MODAL -->
+<div class="modal-bg" id="tv-modal">
+  <div class="modal">
+    <div class="modal-t">📺 Show on TV</div>
+    <div class="modal-step"><div class="modal-num">A</div><div class="modal-txt"><b>Wireless:</b> Chrome menu → Cast → select TV</div></div>
+    <div class="modal-step"><div class="modal-num">B</div><div class="modal-txt"><b>Android:</b> Notification bar → Cast / Screen Mirror</div></div>
+    <div class="modal-step"><div class="modal-num">C</div><div class="modal-txt"><b>Cable:</b> USB-C → HDMI adapter → TV</div></div>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-skip" onclick="hideTVModal()">Cancel</button>
+      <button class="mbtn mbtn-go" onclick="hideTVModal();openFS()">Show Fullscreen →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let apiKey='', imgbbKey='', eventLabel='AI Forge 2026 · Cochin';
+let stream=null, capturedCanvas=null, resultUrl=null, downloadUrl=null, qrUrl=null;
+let theme='irontech', activeCat='all', wildTheme=null;
+
+// ═══════════════════════════════════════════════════════════════
+// THEMES  — 12 regular themes
+// ═══════════════════════════════════════════════════════════════
+const CATS=[
+  {id:'all',  label:'🌟 All'},
+  {id:'hero', label:'🦸 Hero'},
+  {id:'scifi',label:'🚀 Sci-Fi'},
+  {id:'tech', label:'💻 Tech'},
+  {id:'art',  label:'🎨 Art'},
+];
+
+const THEMES={
+  spiderman:{cat:'hero', icon:'🕷️', name:'Spider-Man',       badge:'Friendly Neighbourhood Dev',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with New York City rooftops at night with glowing skyscrapers. Replace all clothing with a tight red and blue Spider-Man suit with raised web-line pattern texture and large white spider-eye lenses on a mask pulled back to reveal the face. Dramatic Marvel movie lighting.',
+    neg:''},
+  irontech: {cat:'hero', icon:'🔴', name:'Iron Man',          badge:'Billionaire Cloud Architect',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with high altitude above clouds with orange sunset sky and city lights far below. Replace all clothing with a full polished red and gold Iron Man armour suit with a bright glowing blue arc reactor on the chest and glowing blue repulsor hands. Dramatic Marvel cinematic lighting.',
+    neg:''},
+  darknight:{cat:'hero', icon:'🦇', name:'Dark Knight',       badge:'Guardian of the Pipeline',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with Gotham City rain-soaked rooftop at night with dark storm clouds and city lights glowing below. Replace all clothing with a black sculpted rubber Batman armour suit with bat symbol on chest and a long dark scalloped cape. Dark moody DC cinematic lighting.',
+    neg:''},
+  captcloud:{cat:'hero', icon:'🛡️', name:'Captain America',  badge:'Star-Spangled SRE',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with a dramatic golden sunrise sky over mountains. Replace all clothing with a blue tactical Captain America armour suit with a white A on helmet and a red white blue vibranium shield in hand. Marvel cinematic lighting.',
+    neg:''},
+  thor:     {cat:'hero', icon:'⚡', name:'Thor',               badge:'God of Infrastructure',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with dramatic Asgard sky with dark storm clouds splitting with lightning bolts. Replace all clothing with shining chrome silver Norse god armour on chest with a long red royal cape and the golden Mjolnir hammer crackling with blue lightning. Epic Marvel cinematic lighting.',
+    neg:''},
+  superman: {cat:'hero', icon:'🔵', name:'Superman',          badge:'Man of the Cloud',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with open blue sky high above Earth with white clouds and golden sun rays shining down. Replace all clothing with a bright blue Superman costume with red S shield emblem on chest and a long flowing red cape. DC heroic cinematic lighting.',
+    neg:''},
+  astronaut:{cat:'scifi',icon:'🚀', name:'Cloud Astronaut',   badge:'Explorer of the Multicloud',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with deep outer space with colorful purple and pink nebula and glowing stars and Earth as a blue sphere below. Replace all clothing with a full white NASA astronaut EVA space suit with helmet visor open showing the face. Dramatic space photography lighting.',
+    neg:''},
+  jedi:     {cat:'scifi',icon:'⚔️', name:'Jedi Master',       badge:'May the Uptime Be With You',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with dramatic deep space star field with colorful nebula. Replace all clothing with flowing brown Jedi robes and hooded cloak with brown leather belt and boots and an ignited glowing blue lightsaber raised with both hands. Star Wars cinematic lighting.',
+    neg:''},
+  starcapt: {cat:'scifi',icon:'🌟', name:'Star Captain',      badge:'Captain of the Cloud Fleet',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with a futuristic USS Enterprise starship bridge with curved glowing walls and holographic control panels and a large viewscreen showing stars. Replace all clothing with a sleek form-fitting Starfleet command uniform with delta insignia badge on chest. Sci-fi cinematic lighting.',
+    neg:''},
+  hacker:   {cat:'tech', icon:'💻', name:'Elite Hacker',      badge:'Root Access Granted',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with a dark underground server room filled with dozens of glowing monitors showing cascading bright green Matrix code. Replace all clothing with a dark grey hoodie. Green neon light reflecting dramatically from the screens. Cyberpunk cinematic lighting.',
+    neg:''},
+  cyberpunk:{cat:'tech', icon:'🌆', name:'Cyberpunk Rebel',   badge:'Born in the Neon City',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with a rain-soaked narrow alley in night-time Tokyo with purple and pink neon signs glowing and reflecting in wet puddles and holographic advertisements floating in air. Replace all clothing with a long black leather coat with glowing neon blue circuit line implants on the arms. Blade Runner cinematic lighting.',
+    neg:''},
+  aipioneer:{cat:'tech', icon:'🧠', name:'AI Pioneer',        badge:'Architect of the Future',
+    prompt:'Keep the face and facial features exactly the same. Replace the entire background with a massive futuristic AI research laboratory with towering walls showing glowing blue holographic neural network diagrams and data visualisations floating in air with robotic arms moving. Replace all clothing with a clean white lab coat. Dramatic blue sci-fi lighting.',
+    neg:''},
+  anime:    {cat:'art',  icon:'✨', name:'Anime Hero',         badge:'Chosen One of CI/CD',
+    prompt:'Convert the entire image to high quality anime illustration art style. Keep the same face shape and features but stylise in anime. Replace the background with a dramatic anime battle sky with speed lines and energy effects. Replace clothing with futuristic cyberpunk anime battle armour with glowing energy aura. Ultra detailed vivid 8k anime.',
+    neg:''},
+  comicbook:{cat:'art',  icon:'💥', name:'Comic Book Hero',   badge:'The Uncanny Engineer',
+    prompt:'Convert the entire image to Marvel DC comic book illustration style. Keep the same face shape and features but render in comic art. Replace the background with a dramatic city skyline comic scene with POW action lines and bright yellow burst effects. Replace clothing with a bright superhero costume with flowing cape and bold colors. Bold black ink outlines Ben-Day dot shading.',
+    neg:''},
+};
+
+// ═══════════════════════════════════════════════════════════════
+// WILD THEMES — for 🎲 Random button (famous movie/anime/game characters)
+// ═══════════════════════════════════════════════════════════════
+const WILD=[
+  {name:'Iron Man',          prompt:'Keep the face and facial features exactly the same. Replace the entire background with high altitude above clouds with orange sunset sky. Replace all clothing with a full polished red and gold Iron Man armour suit with bright glowing arc reactor on chest and blue repulsor hands. Marvel Studios cinematic.',neg:''},
+  {name:'Thor',              prompt:'Keep the face and facial features exactly the same. Replace the entire background with dramatic stormy Asgard sky with lightning. Replace all clothing with shining silver Norse armour with red royal cape and glowing Mjolnir hammer with lightning. Epic Marvel cinematic.',neg:''},
+  {name:'Black Panther',     prompt:'Keep the face and facial features exactly the same. Replace the entire background with futuristic Wakanda golden city at sunset. Replace all clothing with a sleek black vibranium Black Panther suit with glowing purple kinetic energy patterns across the body. Marvel cinematic.',neg:''},
+  {name:'Doctor Strange',    prompt:'Keep the face and facial features exactly the same. Replace the entire background with a magical dimensional portal of golden light with the Sanctum Sanctorum library behind. Replace all clothing with a dark red Cloak of Levitation floating around the body with magical energy mandalas glowing. Marvel cinematic.',neg:''},
+  {name:'Superman',          prompt:'Keep the face and facial features exactly the same. Replace the entire background with high above Earth in open blue sky with white clouds and golden god-rays. Replace all clothing with bright blue Superman costume with red S emblem and long flowing red cape. DC cinematic.',neg:''},
+  {name:'Naruto Hokage',     prompt:'Convert to ultra detailed anime style keeping the same face features. Replace background with Hidden Leaf Village background with dramatic sunset. Replace clothing with full white Hokage robes with red flame trim and Hokage hat with orange Kurama chakra energy swirling around the body. Naruto anime style.',neg:''},
+  {name:'Goku Ultra Instinct',prompt:'Convert to ultra detailed Dragon Ball anime style keeping the same face features. Replace background with shattered rocky dramatic landscape with energy craters. Replace clothing with torn Dragon Ball Z gi with silver ultra instinct aura blazing and white hair flowing with energy crackling from body.',neg:''},
+  {name:'Master Chief',      prompt:'Keep the face and facial features exactly the same visible through a raised gold visor. Replace the entire background with a dramatic Halo ring visible in deep space. Replace all clothing with complete green Mjolnir powered armour suit. Epic Halo cinematic.',neg:''},
+  {name:'Kratos',            prompt:'Keep the face and facial features exactly the same. Replace the entire background with snowy Norse mountain peaks in dramatic blizzard. Replace all clothing with Norse battle armour with fur cape and replace skin with ash-white tone with red Blades of Chaos tattoo markings. God of War cinematic.',neg:''},
+  {name:'Dragon Rider',      prompt:'Keep the face and facial features exactly the same. Replace the entire background with flying high above dramatic mountain peaks on the back of a massive fire-breathing red dragon with clouds and sky surrounding. Replace all clothing with dark dragon rider armour with red scale details. Epic fantasy cinematic.',neg:''},
+  {name:'Matrix Neo',        prompt:'Keep the face and facial features exactly the same. Replace the entire background with cascading green Matrix digital rain code in all directions. Replace all clothing with an iconic long black coat flowing in slow motion with bullets frozen in mid-air all around. Wachowski Matrix cinematic.',neg:''},
+  {name:'Mandalorian',       prompt:'Keep the face and facial features exactly the same partially visible behind a raised visor. Replace the entire background with Tatooine desert canyons and twin suns. Replace all clothing with complete Mandalorian beskar steel armour in silver and dark with Darksaber glowing blue in hand. Star Wars cinematic.',neg:''},
+  {name:'Galactic Emperor',  prompt:'Keep the face and facial features exactly the same. Replace the entire background with deep space with orbiting planets and galaxies and divine golden light. Replace all clothing with an enormous glowing cosmic emperor robe made of galaxies and stardust with a crown of supernovas. Epic space opera cinematic.',neg:''},
+  {name:'Cyber Samurai',     prompt:'Keep the face and facial features exactly the same. Replace the entire background with a rain-soaked neon-lit Tokyo rooftop at night with teal and orange neon signs. Replace all clothing with futuristic cyber samurai armour with glowing neon circuit patterns and a katana made of laser light. Cyberpunk cinematic.',neg:''},
+  {name:'Viking Space Lord',  prompt:'Keep the face and facial features exactly the same. Replace the entire background with the hull of a giant spaceship above a purple nebula galaxy. Replace all clothing with massive Viking battle armour with glowing purple rune engravings and an axe of pure lightning. Epic space cinematic.',neg:''},
+  {name:'Lava Titan',        prompt:'Keep the face and facial features exactly the same. Replace the entire background with an erupting volcano crater with rivers of molten lava flowing below with fire and ash in the air. Replace all clothing with armour forged from volcanic rock with rivers of molten lava glowing through cracks. Epic infernal cinematic.',neg:''},
+  {name:'Time Traveller',    prompt:'Keep the face and facial features exactly the same. Replace the entire background with swirling multiverse portals showing infinite timelines and dimensions. Replace all clothing with an impossible coat showing different historical eras through glowing windows in the fabric. Ultra cinematic.',neg:''},
+  {name:'Pharaoh Matrix',    prompt:'Keep the face and facial features exactly the same. Replace the entire background with a crumbling Egyptian pyramid at night with neon lights and lightning. Replace all clothing with ancient Egyptian pharaoh golden armour covered in glowing neon circuit hieroglyphs. Gold and blue cinematic.',neg:''},
+  {name:'Elven King',        prompt:'Keep the face and facial features exactly the same. Replace the entire background with magical Rivendell waterfall elvish city background. Replace all clothing with breathtaking Elven warrior armour in silver and gold leaf filigree with glowing runes and a gleaming elvish sword. Lord of the Rings Peter Jackson cinematic.',neg:''},
+  {name:'Luffy Gear 5',      prompt:'Convert to ultra detailed One Piece anime style keeping the same face features. Replace background with a joyful cartoonish rubber reality-bending environment with white clouds. Replace clothing with Gear 5 Nika white outfit with white fluffy hair and sun god white glowing aura. Vibrant One Piece anime.',neg:''},
+];
+
+// ═══════════════════════════════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════════════════════════════
+function loadSaved(){
+  const k=localStorage.getItem('afk'), ib=localStorage.getItem('afib'), lb=localStorage.getItem('aflb');
+  if(k){apiKey=k; document.getElementById('api-key').value='••••••••••••••••'; document.getElementById('key-saved').style.display='block';}
+  if(ib){imgbbKey=ib; document.getElementById('imgbb-key').value='••••••••••••••••'; document.getElementById('imgbb-saved').style.display='block';}
+  if(lb){document.getElementById('event-label').value=lb; eventLabel=lb;}
+}
+function toggleK(btn){
+  const i=document.getElementById('api-key');
+  i.type=i.type==='password'?'text':'password';
+  btn.textContent=i.type==='password'?'Show':'Hide';
+}
+function clearKeys(){
+  if(!confirm('Clear all saved keys?'))return;
+  localStorage.removeItem('afk'); localStorage.removeItem('afib'); localStorage.removeItem('aflb');
+  document.getElementById('api-key').value=''; document.getElementById('imgbb-key').value='';
+  document.getElementById('event-label').value='AI Forge 2026 · Cochin';
+  document.getElementById('key-saved').style.display='none'; document.getElementById('imgbb-saved').style.display='none';
+  apiKey=''; imgbbKey='';
+}
+function launch(){
+  const raw=document.getElementById('api-key').value.trim();
+  const ib=document.getElementById('imgbb-key').value.trim();
+  const lb=document.getElementById('event-label').value.trim()||'AI Forge 2026';
+  if(raw && raw!=='••••••••••••••••'){apiKey=raw; localStorage.setItem('afk',raw);}
+  if(ib && ib!=='••••••••••••••••'){imgbbKey=ib; localStorage.setItem('afib',ib);}
+  eventLabel=lb; localStorage.setItem('aflb',lb);
+  if(!apiKey){alert('Please enter your fal.ai API key.');return;}
+  switchScr('booth'); buildCatTabs(); buildThemeGrid(); startCamera();
+}
+loadSaved();
+
+// ═══════════════════════════════════════════════════════════════
+// THEME GRID
+// ═══════════════════════════════════════════════════════════════
+function buildCatTabs(){
+  const ct=document.getElementById('cat-tabs'); ct.innerHTML='';
+  CATS.forEach(c=>{
+    const b=document.createElement('button');
+    b.textContent=c.label; b.dataset.c=c.id;
+    if(c.id===activeCat)b.classList.add('on');
+    b.onclick=()=>{activeCat=c.id; document.querySelectorAll('#cat-tabs button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); buildThemeGrid();};
+    ct.appendChild(b);
+  });
+}
+function buildThemeGrid(){
+  const g=document.getElementById('tgrid'); g.innerHTML='';
+  const keys=Object.keys(THEMES).filter(k=>activeCat==='all'||THEMES[k].cat===activeCat);
+  keys.forEach(k=>{
+    const t=THEMES[k]; const b=document.createElement('button');
+    b.className='tbtn'+(k===theme?' on':''); b.dataset.t=k;
+    b.innerHTML=`<span>${t.icon}</span><span>${t.name.split(' ').slice(0,2).join(' ')}</span>`;
+    b.onclick=()=>{theme=k; document.querySelectorAll('.tbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on');};
+    g.appendChild(b);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════════════════════════════
+async function startCamera(){
+  showP('empty');
+  const msg=document.getElementById('cammsg');
+  msg.style.display='flex'; msg.onclick=null;
+  msg.querySelector('span:last-child').textContent='Starting camera...';
+  document.getElementById('btn-snap').disabled=true;
+  document.getElementById('btn-retry').style.display='none';
+  document.getElementById('btn-fs').style.display='none';
+  document.getElementById('cnv').style.display='none';
+  document.getElementById('pbox') && (document.getElementById('pbox').style.display='none');
+  capturedCanvas=null; resultUrl=null; downloadUrl=null;
+  const v=document.getElementById('vid'); v.style.display='block';
+  if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null; v.srcObject=null; v.load(); await new Promise(r=>setTimeout(r,250));}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
+    v.srcObject=stream;
+    await new Promise((res,rej)=>{v.onloadedmetadata=res; setTimeout(()=>rej(new Error('timeout')),8000);});
+    await v.play();
+    msg.style.display='none'; document.getElementById('btn-snap').disabled=false;
+  }catch(e){
+    msg.querySelector('span:last-child').textContent='Camera error — tap to retry';
+    msg.onclick=startCamera;
+  }
+}
+function startCD(){
+  document.getElementById('btn-snap').disabled=true;
+  const ly=document.getElementById('cdlayer'), nm=document.getElementById('cdnum');
+  ly.style.display='flex'; let n=3; nm.textContent=n;
+  const iv=setInterval(()=>{n--; if(n<=0){clearInterval(iv);ly.style.display='none';snap();}else nm.textContent=n;},1000);
+}
+function snap(){
+  const v=document.getElementById('vid'), c=document.getElementById('cnv');
+  c.width=v.videoWidth||640; c.height=v.videoHeight||480;
+  const ctx=c.getContext('2d'); ctx.translate(c.width,0); ctx.scale(-1,1); ctx.drawImage(v,0,0,c.width,c.height);
+  const fl=document.getElementById('flash'); fl.style.opacity='1'; setTimeout(()=>fl.style.opacity='0',150);
+  capturedCanvas=c; c.style.display='block'; v.style.display='none';
+  if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;}
+  document.getElementById('btn-retry').style.display='inline-block';
+  transform();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TRANSFORM
+// ═══════════════════════════════════════════════════════════════
+async function transform(){
+  const t = wildTheme || THEMES[theme];
+  showP('loading');
+  document.getElementById('ltxt').textContent = wildTheme ? '🎲 '+wildTheme.name+'!' : 'Transforming into '+t.name+'...';
+  document.getElementById('lsub').textContent='AI working its magic · ~25 seconds';
+  let prog=0; const pf=document.getElementById('pf');
+  const piv=setInterval(()=>{prog=Math.min(88,prog+Math.random()*5); pf.style.width=prog+'%';},1500);
+
+  try{
+    // Resize to 1024x1024
+    const rc=document.createElement('canvas'); rc.width=1024; rc.height=1024;
+    const rctx=rc.getContext('2d');
+    const sw=capturedCanvas.width, sh=capturedCanvas.height, sq=Math.min(sw,sh);
+    rctx.drawImage(capturedCanvas,(sw-sq)/2,(sh-sq)/2,sq,sq,0,0,1024,1024);
+    const b64=rc.toDataURL('image/jpeg',0.85).split(',')[1];
+    const strength=parseInt(document.getElementById('strength').value)/100;
+
+    // Call fal.ai with retry
+    let imgUrl=null, lastErr=null;
+    for(let attempt=0; attempt<2; attempt++){
+      try{
+        const r=await fetch('https://fal.run/fal-ai/flux-pro/kontext',{
+          method:'POST',
+          headers:{Authorization:'Key '+apiKey,'Content-Type':'application/json'},
+          body:JSON.stringify({
+            image_url:'data:image/jpeg;base64,'+b64,
+            prompt:t.prompt,
+            num_inference_steps:28,
+            guidance_scale:3.5
+          })
+        });
+        if(!r.ok){
+          const et=await r.text();
+          let em=et; try{const ej=JSON.parse(et); em=ej.detail||(typeof ej.message==='string'?ej.message:JSON.stringify(ej));}catch(_e){}
+          throw new Error('fal.ai '+r.status+': '+String(em).slice(0,300));
+        }
+        const d=await r.json();
+        imgUrl=d.images?.[0]?.url||d.image?.url||d.url;
+        if(!imgUrl)throw new Error('No image in fal.ai response');
+        lastErr=null; break;
+      }catch(e2){
+        lastErr=e2;
+        if(attempt===0){document.getElementById('lsub').textContent='Retrying...'; await new Promise(rr=>setTimeout(rr,2000));}
+      }
+    }
+    if(lastErr)throw lastErr;
+
+    clearInterval(piv); pf.style.width='100%';
+    wildTheme=null;
+
+    // Show AI image on screen
+    resultUrl=imgUrl; downloadUrl=imgUrl;
+    document.getElementById('img-after').src=imgUrl;
+    showP('card');
+    document.getElementById('btn-fs').style.display='inline-block';
+    document.getElementById('btn-snap').disabled=false;
+
+    // Build collage in background (original + AI side by side)
+    (async()=>{
+      try{
+        let aiUrl=imgUrl;
+        if(!imgUrl.startsWith('data:')){
+          const res=await fetch(imgUrl); const blob=await res.blob();
+          aiUrl=await new Promise(r=>{const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob);});
+        }
+        const fi=new Image();
+        fi.onload=()=>{downloadUrl=buildCollage(capturedCanvas,fi);};
+        fi.src=aiUrl;
+      }catch(e){console.warn('Collage failed',e);}
+    })();
+
+    // QR via ImgBB
+    if(imgbbKey) uploadQR(imgUrl, t.name);
+    else{document.getElementById('qr-wrap').innerHTML='<div style="font-size:24px;opacity:.4">📲</div>'; document.getElementById('qr-sub').textContent='Add ImgBB key in setup for QR code.';}
+
+  }catch(e){
+    clearInterval(piv); wildTheme=null;
+    document.getElementById('errmsg').textContent=e.message||'Check API key and internet.';
+    showP('error');
+    document.getElementById('btn-snap').disabled=false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COLLAGE (for download/TV)
+// ═══════════════════════════════════════════════════════════════
+function buildCollage(realCanvas, aiImg){
+  const W=1200, H=600, MID=W/2, PAD=12, DIV=4;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#0D1117'; ctx.fillRect(0,0,W,H);
+  function fit(src,rx,ry,rw,rh,isCv){
+    const iw=isCv?src.width:src.naturalWidth||1, ih=isCv?src.height:src.naturalHeight||1;
+    const ar=iw/ih; let dw=rw,dh=rw/ar; if(dh>rh){dh=rh;dw=rh*ar;}
+    ctx.drawImage(src,rx+(rw-dw)/2,ry+(rh-dh)/2,dw,dh);
+  }
+  fit(realCanvas,PAD,28,MID-DIV/2-PAD,H-36,true);
+  fit(aiImg,MID+DIV/2,28,MID-DIV/2-PAD,H-36,false);
+  // Divider
+  const dg=ctx.createLinearGradient(0,0,0,H);
+  dg.addColorStop(0,'rgba(93,202,165,0)'); dg.addColorStop(.4,'rgba(93,202,165,.9)');
+  dg.addColorStop(.6,'rgba(93,202,165,.9)'); dg.addColorStop(1,'rgba(93,202,165,0)');
+  ctx.fillStyle=dg; ctx.fillRect(MID-2,0,4,H);
+  // Labels
+  ctx.font='bold 13px Arial'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,.65)'; ctx.textAlign='left'; ctx.fillText('📷  ORIGINAL',PAD+6,16);
+  ctx.fillStyle='rgba(93,202,165,.95)'; ctx.textAlign='right'; ctx.fillText('✨  AI TRANSFORMED',W-PAD-6,16);
+  ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font='11px Arial'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText(eventLabel+' · AI Photo Booth',W/2,H-4);
+  // Update TV canvas
+  const fc=document.getElementById('cnvfs');
+  if(fc){fc.width=W; fc.height=H; fc.getContext('2d').drawImage(c,0,0);}
+  return c.toDataURL('image/jpeg',.95);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// QR CODE
+// ═══════════════════════════════════════════════════════════════
+async function uploadQR(imgUrl, name){
+  const qw=document.getElementById('qr-wrap'), qs=document.getElementById('qr-sub');
+  try{
+    let b64img;
+    if(imgUrl.startsWith('data:')){b64img=imgUrl.split(',')[1];}
+    else{const r=await fetch(imgUrl); const bl=await r.blob(); b64img=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result.split(',')[1]);fr.readAsDataURL(bl);});}
+    const fd=new FormData();
+    fd.append('key',imgbbKey); fd.append('image',b64img);
+    fd.append('name','AIForge-'+name.replace(/\s+/g,'-')+'-'+Date.now());
+    fd.append('expiration','86400');
+    const resp=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
+    const data=await resp.json();
+    if(!data.success)throw new Error('ImgBB failed');
+    const url=data.data.url;
+    qrUrl=url;
+    const qrApi=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}&color=0D1117&bgcolor=FFFFFF`;
+    qw.innerHTML=`<img src="${qrApi}" style="width:70px;height:70px" alt="QR">`;
+    qs.textContent='Scan to save photo! (24hr link)';
+    document.getElementById('qr-link').href=url; document.getElementById('qr-link').style.display='block';
+  }catch(e){
+    qw.innerHTML='<div style="font-size:22px;opacity:.35">📲</div>';
+    qs.textContent='Upload failed — use Save button.';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════════
+async function pickRandom(){
+  wildTheme=WILD[Math.floor(Math.random()*WILD.length)];
+  showP('loading');
+  document.getElementById('ltxt').textContent='🎲  '+wildTheme.name;
+  document.getElementById('lsub').textContent='Get ready for something wild!';
+  await startCamera();
+  setTimeout(startCD,600);
+}
+function resetBooth(){showP('empty'); document.getElementById('img-after').src=''; document.getElementById('btn-fs').style.display='none'; startCamera();}
+function showP(p){
+  ['rempty','rload','rerr','rcard'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display = id.replace('r','')===p||id===('r'+p) ? (p==='card'||p==='error'?'flex':p==='loading'?'flex':'flex') : 'none';
+  });
+  // simpler:
+  document.getElementById('rempty').style.display=p==='empty'?'flex':'none';
+  document.getElementById('rload').style.display=p==='loading'?'flex':'none';
+  document.getElementById('rerr').style.display=p==='error'?'flex':'none';
+  document.getElementById('rcard').style.display=p==='card'?'flex':'none';
+  if(p==='loading')document.getElementById('pf').style.width='0';
+}
+function switchScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on')); document.getElementById(id).classList.add('on');}
+function showTVModal(){if(!resultUrl)return; document.getElementById('tv-modal').classList.add('on');}
+function hideTVModal(){document.getElementById('tv-modal').classList.remove('on');}
+async function openFS(){
+  switchScr('fs');
+  document.getElementById('fs').requestFullscreen?.().catch(()=>{});
+  // Wait for collage then show it
+  if(downloadUrl&&downloadUrl!==resultUrl){
+    const fc=document.getElementById('cnvfs'); const img=new Image();
+    img.onload=()=>{fc.width=img.naturalWidth;fc.height=img.naturalHeight;fc.getContext('2d').drawImage(img,0,0);};
+    img.src=downloadUrl;
+  } else {
+    for(let i=0;i<16&&downloadUrl===resultUrl;i++) await new Promise(r=>setTimeout(r,300));
+    if(downloadUrl&&downloadUrl!==resultUrl){
+      const fc=document.getElementById('cnvfs'); const img=new Image();
+      img.onload=()=>{fc.width=img.naturalWidth;fc.height=img.naturalHeight;fc.getContext('2d').drawImage(img,0,0);};
+      img.src=downloadUrl;
+    }
+  }
+}
+function closeFS(){switchScr('booth'); document.exitFullscreen?.().catch(()=>{});}
+function dlResult(){
+  const dl=downloadUrl||resultUrl; if(!dl)return;
+  const a=document.createElement('a'); a.href=dl; a.download='ai-forge-'+Date.now()+'.jpg'; a.click();
+}
+async function sharePhoto(){
+  const dl=downloadUrl||resultUrl; if(!dl)return;
+  try{
+    const blob=await (await fetch(dl)).blob();
+    const file=new File([blob],'ai-forge.jpg',{type:'image/jpeg'});
+    if(navigator.share&&navigator.canShare?.({files:[file]})){
+      await navigator.share({files:[file],title:'AI Forge Photo Booth',text:'My AI transformation at AI Forge 2026!'});
+    } else dlResult();
+  }catch(e){if(e.name!=='AbortError')dlResult();}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeFS();
+  if(e.key===' '&&!document.getElementById('btn-snap').disabled)startCD();
+});
+</script>
+</body></html>
