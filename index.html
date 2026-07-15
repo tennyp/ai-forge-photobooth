@@ -502,9 +502,13 @@ async function transform(){
     clearInterval(piv); pf.style.width='100%';
     wildTheme=null;
 
-    // Show AI image on screen
-    resultUrl=imgUrl; downloadUrl=imgUrl;
-    document.getElementById('img-after').src=imgUrl;
+    // Preserve original face — paste back onto AI result
+    document.getElementById('lsub').textContent='Preserving your face...';
+    const preservedUrl=await preserveFace(capturedCanvas, imgUrl);
+    
+    // Show preserved result on screen
+    resultUrl=preservedUrl; downloadUrl=preservedUrl;
+    document.getElementById('img-after').src=preservedUrl;
     showP('card');
     document.getElementById('btn-fs').style.display='inline-block';
     document.getElementById('btn-snap').disabled=false;
@@ -658,5 +662,73 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape')closeFS();
   if(e.key===' '&&!document.getElementById('btn-snap').disabled)startCD();
 });
+// ═══════════════════════════════════════════════════════════════
+// FACE PRESERVATION — paste original face back onto AI result
+// ═══════════════════════════════════════════════════════════════
+async function preserveFace(capturedCanvas, aiImgUrl){
+  return new Promise(async (resolve)=>{
+    try{
+      // Load AI image
+      const aiImg=new Image();
+      aiImg.crossOrigin='anonymous';
+      await new Promise((res,rej)=>{aiImg.onload=res;aiImg.onerror=rej;aiImg.src=aiImgUrl;});
+
+      const W=1024,H=1024;
+
+      // AI image as base canvas
+      const out=document.createElement('canvas'); out.width=W; out.height=H;
+      const ctx=out.getContext('2d');
+      ctx.drawImage(aiImg,0,0,W,H);
+
+      // Original photo resized to 1024x1024 (same crop as what we sent to fal)
+      const orig=document.createElement('canvas'); orig.width=W; orig.height=H;
+      const octx=orig.getContext('2d');
+      const sw=capturedCanvas.width, sh=capturedCanvas.height;
+      const sq=Math.min(sw,sh);
+      octx.drawImage(capturedCanvas,(sw-sq)/2,(sh-sq)/2,sq,sq,0,0,W,H);
+
+      // Face region — upper-center oval (typical selfie portrait position)
+      // cx/cy = face centre, rx/ry = oval radii, feather = blend edge softness
+      const cx=W*0.5, cy=H*0.30;
+      const rx=W*0.28, ry=H*0.33;
+      const feather=W*0.10;
+
+      // Build feathered oval mask
+      const mask=document.createElement('canvas'); mask.width=W; mask.height=H;
+      const mctx=mask.getContext('2d');
+      // Use multiple concentric ellipses for smooth gradient
+      for(let i=0;i<=20;i++){
+        const t=i/20;
+        const alpha=1-t;  // 1 at center, 0 at edge
+        mctx.beginPath();
+        mctx.ellipse(cx, cy, rx*(1+t*(feather/rx)), ry*(1+t*(feather/ry)), 0, 0, Math.PI*2);
+        mctx.fillStyle=`rgba(255,255,255,${alpha*0.05+0.05})`;
+        mctx.fill();
+      }
+      // Solid centre
+      mctx.beginPath();
+      mctx.ellipse(cx,cy,rx*0.6,ry*0.6,0,0,Math.PI*2);
+      mctx.fillStyle='rgba(255,255,255,1)';
+      mctx.fill();
+
+      // Apply mask to original face
+      const faceLayer=document.createElement('canvas'); faceLayer.width=W; faceLayer.height=H;
+      const fctx=faceLayer.getContext('2d');
+      fctx.drawImage(orig,0,0);
+      fctx.globalCompositeOperation='destination-in';
+      fctx.drawImage(mask,0,0);
+
+      // Composite face onto AI result
+      ctx.globalCompositeOperation='source-over';
+      ctx.drawImage(faceLayer,0,0);
+
+      resolve(out.toDataURL('image/jpeg',0.92));
+    }catch(e){
+      console.warn('Face preserve failed, using AI image as-is',e);
+      resolve(aiImgUrl);
+    }
+  });
+}
+
 </script>
 </body></html>
