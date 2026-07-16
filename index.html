@@ -483,15 +483,14 @@ function snap(){
 async function transform(){
   const t = wildTheme || THEMES[theme];
   // Group mode: modify prompt to preserve ALL faces and dress everyone
-  const basePrompt = groupMode
-    ? t.prompt
-        .replace('CRITICAL: Do not change the face at all. The face must be 100% identical to the original photo.', 'CRITICAL: Do not change any faces at all. All faces and people in the group must be 100% identical to the original photo.')
-        .replace('Face fully visible, no mask.', 'All faces fully visible, no masks.')
-        .replace('Keep the face', 'Keep all the faces')
-        .replace('the face must', 'all faces must')
-        .replace('same face, same facial features', 'same faces, same facial features for all people')
-        + (groupMode ? ' This is a group photo — apply matching costumes to everyone in the group.' : '')
-    : t.prompt;
+  // Build prompt — strong face lock for both solo and group
+  const facePrefix = groupMode
+    ? 'CRITICAL: Keep ALL faces in this photo 100% identical, do not change any face. Keep exact eyes nose mouth beard glasses skin of every person. '
+    : 'CRITICAL: Keep the face 100% identical, do not change the face at all. Keep exact eyes nose mouth beard glasses skin tone. ';
+  const costumeSuffix = groupMode
+    ? ' Apply matching costumes to ALL people in the group. Change the background completely.'
+    : ' Change the costume and background completely.';
+  const basePrompt = facePrefix + t.prompt + costumeSuffix;
   showP('loading');
   document.getElementById('ltxt').textContent = wildTheme ? '🎲 '+wildTheme.name+'!' : 'Transforming into '+t.name+'...';
   document.getElementById('lsub').textContent='AI working its magic · ~25 seconds';
@@ -522,15 +521,15 @@ async function transform(){
     let imgUrl=null, lastErr=null;
     for(let attempt=0; attempt<2; attempt++){
       try{
-        const r=await fetch('https://fal.run/fal-ai/flux-pro/kontext',{
+        const r=await fetch('https://fal.run/fal-ai/flux-kontext/dev',{
           method:'POST',
           headers:{Authorization:'Key '+apiKey,'Content-Type':'application/json'},
           body:JSON.stringify({
             image_url:'data:image/jpeg;base64,'+b64,
             prompt:basePrompt,
-            num_inference_steps:35,
-            guidance_scale: groupMode ? 4 : 10,
-            strength: groupMode ? 0.45 : undefined
+            num_inference_steps:28,
+            guidance_scale:3.5,
+            strength:0.85
           })
         });
         if(!r.ok){
