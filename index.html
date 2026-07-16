@@ -561,18 +561,6 @@ async function transform(){
     document.getElementById('btn-fs').style.display='inline-block';
     document.getElementById('btn-snap').disabled=false;
 
-    // Auto-download framed collage once built
-    const _dlTheme=t.name||'photo';
-    (async()=>{
-      let waited=0;
-      while(downloadUrl===imgUrl&&waited<8000){await new Promise(r=>setTimeout(r,500));waited+=500;}
-      const dl=downloadUrl||imgUrl;
-      const a=document.createElement('a');
-      a.href=dl;
-      a.download='AIForge-'+_dlTheme.replace(/\s+/g,'-')+'-'+Date.now()+'.jpg';
-      a.click();
-    })();
-
     // Build collage with AI Forge frame — then upload QR
     (async()=>{
       try{
@@ -968,21 +956,27 @@ function closeFS(){switchScr('booth'); document.exitFullscreen?.().catch(()=>{})
 async function dlResult(){
   const dl=downloadUrl||resultUrl; if(!dl)return;
   try{
-    let blobUrl=dl;
-    if(!dl.startsWith('data:')){
-      // Fetch remote URL as blob to allow cross-origin download
-      const res=await fetch(dl);
-      const blob=await res.blob();
-      blobUrl=URL.createObjectURL(blob);
+    // Convert to blob URL for cross-origin safe download
+    let blob;
+    if(dl.startsWith('data:')){
+      const res=await fetch(dl); blob=await res.blob();
+    } else {
+      const res=await fetch(dl,{mode:'cors'}); blob=await res.blob();
     }
+    const blobUrl=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=blobUrl;
     a.download='AIForge-'+Date.now()+'.jpg';
+    document.body.appendChild(a);
     a.click();
-    if(blobUrl!==dl) setTimeout(()=>URL.revokeObjectURL(blobUrl),5000);
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(blobUrl),10000);
   }catch(e){
-    // Last resort: open in new tab
-    window.open(dl,'_blank');
+    // Mobile fallback: open image in new tab → long press to save
+    const win=window.open('','_blank');
+    if(win){
+      win.document.write('<html><body style="margin:0;background:#000"><img src="'+dl+'" style="max-width:100%;display:block"><p style="color:#fff;text-align:center;font-family:sans-serif;padding:12px">Long press the image and tap Save</p></body></html>');
+    }
   }
 }
 async function sharePhoto(){
