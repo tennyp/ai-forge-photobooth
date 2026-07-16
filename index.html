@@ -630,15 +630,21 @@ async function buildCollage(realCanvas, aiImg){
   // Black background (matches logo background)
   fc2.fillStyle='#000'; fc2.fillRect(0,0,W,framed.height);
 
-  // Load and draw the actual AI Forge logo as top bar
+  // Load and draw the actual AI Forge logo — smaller, centered
   await new Promise(res=>{
     const logoImg=new Image();
     logoImg.onload=()=>{
-      fc2.drawImage(logoImg,0,0,W,logoH);
+      // Draw dark background first
+      fc2.fillStyle='#000'; fc2.fillRect(0,0,W,logoH);
+      // Draw logo at 45% width, centered
+      const lw=Math.round(W*0.45);
+      const lh=Math.round(lw*(logoImg.naturalHeight||logoImg.height||200)/(logoImg.naturalWidth||logoImg.width||800));
+      const lx=Math.round((W-lw)/2);
+      const ly=Math.round((logoH-lh)/2);
+      fc2.drawImage(logoImg,lx,ly,lw,lh);
       res();
     };
     logoImg.onerror=()=>{
-      // Fallback text if logo fails
       fc2.fillStyle='#000'; fc2.fillRect(0,0,W,logoH);
       fc2.font='bold 28px Arial'; fc2.fillStyle='#fff';
       fc2.textAlign='center'; fc2.textBaseline='middle';
