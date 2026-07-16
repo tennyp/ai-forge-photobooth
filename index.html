@@ -677,120 +677,150 @@ function hideTVModal(){document.getElementById('tv-modal').classList.remove('on'
 // FREE FILTERS — instant canvas effects, no API credits used
 // ═══════════════════════════════════════════════════════════════
 const FILTERS=[
-  {id:'matrix',   icon:'🟢', name:'Matrix',     badge:'Welcome to the Matrix',
-   fn:(d,w,h)=>{
-     for(let i=0;i<d.length;i+=4){
-       const g=d[i]*0.1+d[i+1]*0.8+d[i+2]*0.1;
-       d[i]=0;d[i+1]=Math.min(255,g*1.4);d[i+2]=0;
-     }
-   },
-   overlay:(ctx,w,h)=>{
-     for(let y=0;y<h;y+=3){ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(0,y,w,1);}
-     ctx.fillStyle='rgba(0,40,0,0.25)';ctx.fillRect(0,0,w,h);
-   }},
-  {id:'noir',     icon:'⬛', name:'Noir',        badge:'Black and White Classic',
-   fn:(d)=>{
-     for(let i=0;i<d.length;i+=4){
-       const g=d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114;
-       const c=Math.min(255,(g-128)*1.5+128);
-       d[i]=d[i+1]=d[i+2]=c;
-     }
-   }},
-  {id:'sepia',    icon:'🟤', name:'Vintage',     badge:'Old School Vibes',
-   fn:(d)=>{
-     for(let i=0;i<d.length;i+=4){
-       const r=d[i],g=d[i+1],b=d[i+2];
-       d[i]=Math.min(255,r*0.393+g*0.769+b*0.189);
-       d[i+1]=Math.min(255,r*0.349+g*0.686+b*0.168);
-       d[i+2]=Math.min(255,r*0.272+g*0.534+b*0.131);
-     }
-   },
-   overlay:(ctx,w,h)=>{
-     const vg=ctx.createRadialGradient(w/2,h/2,h*0.3,w/2,h/2,h*0.8);
-     vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.45)');
-     ctx.fillStyle=vg;ctx.fillRect(0,0,w,h);
-   }},
-  {id:'cyberpunk',icon:'🔵', name:'Cyber Glow',  badge:'Neon City Night',
-   fn:(d)=>{
-     for(let i=0;i<d.length;i+=4){
-       const r=d[i],g=d[i+1],b=d[i+2];
-       d[i]=Math.min(255,r*0.5+b*0.5);
-       d[i+1]=Math.min(255,g*0.3+b*0.3);
-       d[i+2]=Math.min(255,b*1.6+r*0.2);
-     }
-   },
-   overlay:(ctx,w,h)=>{
-     ctx.fillStyle='rgba(0,100,255,0.12)';ctx.fillRect(0,0,w,h);
-     for(let y=0;y<h;y+=4){ctx.fillStyle='rgba(0,200,255,0.04)';ctx.fillRect(0,y,w,1);}
-   }},
-  {id:'thermal',  icon:'🔴', name:'Thermal',     badge:'Heat Signature Detected',
-   fn:(d)=>{
-     for(let i=0;i<d.length;i+=4){
-       const v=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)/255;
-       if(v<0.25){d[i]=0;d[i+1]=0;d[i+2]=Math.round(v*4*255);}
-       else if(v<0.5){const t=(v-0.25)*4;d[i]=0;d[i+1]=Math.round(t*255);d[i+2]=Math.round((1-t)*255);}
-       else if(v<0.75){const t=(v-0.5)*4;d[i]=Math.round(t*255);d[i+1]=255;d[i+2]=0;}
-       else{const t=(v-0.75)*4;d[i]=255;d[i+1]=Math.round((1-t)*255);d[i+2]=0;}
-     }
-   }},
-  {id:'glitch',   icon:'⚡', name:'Glitch',      badge:'System Error 404',
-   fn:(d,w,h)=>{
-     const shift=Math.floor(w*0.04);
-     const orig=[...d];
-     for(let i=0;i<d.length;i+=4){
-       const x=(i/4)%w;const y=Math.floor(i/4/w);
-       const ni=((y*w)+(x+shift)%w)*4;
-       if(ni<orig.length){d[i]=orig[ni];} // R channel shift
-       const ni2=((y*w)+Math.max(0,x-shift))*4;
-       if(ni2<orig.length){d[i+2]=orig[ni2+2];} // B channel shift
-     }
-   }},
-  {id:'neon',     icon:'💜', name:'Neon Pop',    badge:'Ultra Vivid Mode',
-   fn:(d)=>{
-     for(let i=0;i<d.length;i+=4){
-       d[i]=Math.min(255,d[i]*1.4);
-       d[i+1]=Math.min(255,d[i+1]*0.8);
-       d[i+2]=Math.min(255,d[i+2]*1.6);
-       const g=d[i]*0.3+d[i+1]*0.6+d[i+2]*0.1;
-       d[i]=Math.min(255,d[i]+(d[i]-g)*0.8);
-       d[i+1]=Math.min(255,d[i+1]+(d[i+1]-g)*0.8);
-       d[i+2]=Math.min(255,d[i+2]+(d[i+2]-g)*0.8);
-     }
-   }},
-  {id:'golden',   icon:'✨', name:'Golden Hour',  badge:'Magic Light',
-   fn:(d)=>{
-     for(let i=0;i<d.length;i+=4){
-       d[i]=Math.min(255,d[i]*1.2+30);
-       d[i+1]=Math.min(255,d[i+1]*1.05+10);
-       d[i+2]=Math.max(0,d[i+2]*0.85-10);
-     }
-   },
-   overlay:(ctx,w,h)=>{
-     const g=ctx.createRadialGradient(w*0.7,h*0.2,0,w*0.7,h*0.2,w*0.8);
-     g.addColorStop(0,'rgba(255,200,50,0.2)');g.addColorStop(1,'rgba(0,0,0,0)');
-     ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
-   }},
+  {id:'cartoon', icon:'🎨', name:'Cartoon',   badge:'Living the Animated Life'},
+  {id:'sketch',  icon:'✏️', name:'Sketch',    badge:'Hand Drawn Legend'},
+  {id:'popart',  icon:'🟡', name:'Pop Art',   badge:'Andy Warhol Moment'},
+  {id:'comic',   icon:'💥', name:'Comic Book',badge:'POW! You Are a Hero'},
+  {id:'neon',    icon:'🌈', name:'Neon Glow', badge:'Neon Nights'},
+  {id:'thermal', icon:'🔴', name:'Thermal',   badge:'Heat Signature Detected'},
 ];
 
 function applyFilter(filterId){
-  if(!capturedCanvas){return;}
-  const f=FILTERS.find(x=>x.id===filterId);
-  if(!f)return;
+  if(!capturedCanvas){showP('empty');return;}
   const W=capturedCanvas.width, H=capturedCanvas.height;
   const out=document.createElement('canvas'); out.width=W; out.height=H;
   const ctx=out.getContext('2d');
-  ctx.drawImage(capturedCanvas,0,0);
-  const imgData=ctx.getImageData(0,0,W,H);
-  f.fn(imgData.data,W,H);
-  ctx.putImageData(imgData,0,0);
-  if(f.overlay)f.overlay(ctx,W,H);
+
+  if(filterId==='cartoon'){
+    // 1. Posterize (reduce colours)
+    ctx.drawImage(capturedCanvas,0,0);
+    let id=ctx.getImageData(0,0,W,H); const d=id.data;
+    for(let i=0;i<d.length;i+=4){
+      d[i]=Math.round(d[i]/64)*64;
+      d[i+1]=Math.round(d[i+1]/64)*64;
+      d[i+2]=Math.round(d[i+2]/64)*64;
+    }
+    ctx.putImageData(id,0,0);
+    // 2. Edge detection overlay
+    const tmp=document.createElement('canvas'); tmp.width=W; tmp.height=H;
+    const tc=tmp.getContext('2d'); tc.drawImage(capturedCanvas,0,0);
+    const src=tc.getImageData(0,0,W,H).data;
+    const edge=ctx.getImageData(0,0,W,H);
+    for(let y=1;y<H-1;y++){for(let x=1;x<W-1;x++){
+      const i=(y*W+x)*4;
+      const gx=(-src[(y*W+x-1)*4]+src[(y*W+x+1)*4])/255;
+      const gy=(-src[((y-1)*W+x)*4]+src[((y+1)*W+x)*4])/255;
+      const mag=Math.sqrt(gx*gx+gy*gy);
+      if(mag>0.25){edge.data[i]=0;edge.data[i+1]=0;edge.data[i+2]=0;edge.data[i+3]=200;}
+    }}
+    ctx.putImageData(edge,0,0);
+
+  } else if(filterId==='sketch'){
+    // Pencil sketch: grayscale + inverted edges
+    const tmp=document.createElement('canvas'); tmp.width=W; tmp.height=H;
+    const tc=tmp.getContext('2d'); tc.drawImage(capturedCanvas,0,0);
+    const src=tc.getImageData(0,0,W,H).data;
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+    const out2=ctx.getImageData(0,0,W,H);
+    for(let y=2;y<H-2;y++){for(let x=2;x<W-2;x++){
+      const i=(y*W+x)*4;
+      const g=s=>(src[s]*0.299+src[s+1]*0.587+src[s+2]*0.114);
+      const gx=(-g((y*W+x-2)*4)-2*g((y*W+x-1)*4)+2*g((y*W+x+1)*4)+g((y*W+x+2)*4));
+      const gy=(-g(((y-2)*W+x)*4)-2*g(((y-1)*W+x)*4)+2*g(((y+1)*W+x)*4)+g(((y+2)*W+x)*4));
+      const mag=Math.min(255,Math.sqrt(gx*gx+gy*gy)*1.5);
+      const c=255-mag;
+      out2.data[i]=out2.data[i+1]=out2.data[i+2]=c; out2.data[i+3]=255;
+    }}
+    ctx.putImageData(out2,0,0);
+
+  } else if(filterId==='popart'){
+    // Andy Warhol 4-panel pop art
+    const hw=Math.floor(W/2), hh=Math.floor(H/2);
+    const palettes=[[255,50,50],[50,200,255],[255,220,0],[180,50,255]];
+    palettes.forEach(([pr,pg,pb],pi)=>{
+      const px=(pi%2)*hw, py=Math.floor(pi/2)*hh;
+      const tmp=document.createElement('canvas'); tmp.width=hw; tmp.height=hh;
+      const tc=tmp.getContext('2d'); tc.drawImage(capturedCanvas,0,0,hw,hh);
+      const id=tc.getImageData(0,0,hw,hh); const d=id.data;
+      for(let i=0;i<d.length;i+=4){
+        const g=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)/255;
+        const t=g>0.5?1:0;
+        d[i]=t?pr:20; d[i+1]=t?pg:20; d[i+2]=t?pb:20;
+      }
+      tc.putImageData(id,0,0);
+      ctx.drawImage(tmp,px,py);
+    });
+
+  } else if(filterId==='comic'){
+    // Comic book: halftone + bold edges
+    ctx.drawImage(capturedCanvas,0,0);
+    const id=ctx.getImageData(0,0,W,H); const d=id.data;
+    // Posterize to bold colours
+    for(let i=0;i<d.length;i+=4){
+      d[i]=d[i]>128?255:0;
+      d[i+1]=d[i+1]>128?255:0;
+      d[i+2]=d[i+2]>128?220:0;
+    }
+    ctx.putImageData(id,0,0);
+    // Halftone dots overlay
+    const dot=document.createElement('canvas'); dot.width=W; dot.height=H;
+    const dc=dot.getContext('2d');
+    const tmp2=document.createElement('canvas'); tmp2.width=W; tmp2.height=H;
+    const tc2=tmp2.getContext('2d'); tc2.drawImage(capturedCanvas,0,0);
+    const src=tc2.getImageData(0,0,W,H).data;
+    const gs=6;
+    for(let y=0;y<H;y+=gs){for(let x=0;x<W;x+=gs){
+      const i=(y*W+x)*4;
+      const lum=(src[i]*0.299+src[i+1]*0.587+src[i+2]*0.114)/255;
+      const r=lum*gs*0.45;
+      dc.fillStyle='rgba(0,0,0,0.5)';
+      dc.beginPath(); dc.arc(x+gs/2,y+gs/2,r,0,Math.PI*2); dc.fill();
+    }}
+    ctx.drawImage(dot,0,0);
+    // Bold border
+    ctx.strokeStyle='#000'; ctx.lineWidth=3;
+    ctx.strokeRect(3,3,W-6,H-6);
+
+  } else if(filterId==='neon'){
+    // Neon glow on dark background
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    const tmp=document.createElement('canvas'); tmp.width=W; tmp.height=H;
+    const tc=tmp.getContext('2d'); tc.drawImage(capturedCanvas,0,0);
+    const src=tc.getImageData(0,0,W,H).data;
+    const neon=ctx.getImageData(0,0,W,H);
+    const colors=[[0,255,150],[255,50,200],[0,200,255]];
+    for(let y=1;y<H-1;y++){for(let x=1;x<W-1;x++){
+      const i=(y*W+x)*4;
+      const gx=(-src[(y*W+x-1)*4]+src[(y*W+x+1)*4]);
+      const gy=(-src[((y-1)*W+x)*4]+src[((y+1)*W+x)*4]);
+      const mag=Math.min(255,Math.sqrt(gx*gx+gy*gy)*1.2);
+      const c=colors[Math.floor((x/W)*3)];
+      neon.data[i]=c[0]*mag/255;
+      neon.data[i+1]=c[1]*mag/255;
+      neon.data[i+2]=c[2]*mag/255;
+      neon.data[i+3]=255;
+    }}
+    ctx.putImageData(neon,0,0);
+
+  } else if(filterId==='thermal'){
+    ctx.drawImage(capturedCanvas,0,0);
+    const id=ctx.getImageData(0,0,W,H); const d=id.data;
+    for(let i=0;i<d.length;i+=4){
+      const v=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)/255;
+      if(v<0.25){d[i]=0;d[i+1]=0;d[i+2]=Math.round(v*4*255);}
+      else if(v<0.5){const t=(v-0.25)*4;d[i]=0;d[i+1]=Math.round(t*255);d[i+2]=Math.round((1-t)*255);}
+      else if(v<0.75){const t=(v-0.5)*4;d[i]=Math.round(t*255);d[i+1]=255;d[i+2]=0;}
+      else{const t=(v-0.75)*4;d[i]=255;d[i+1]=Math.round((1-t)*255);d[i+2]=0;}
+    }
+    ctx.putImageData(id,0,0);
+  }
+
   const url=out.toDataURL('image/jpeg',0.92);
   resultUrl=url; downloadUrl=url;
   document.getElementById('img-after').src=url;
   showP('card');
   document.getElementById('btn-fs').style.display='inline-block';
   document.getElementById('btn-snap').disabled=false;
-  // QR
   if(imgbbKey) uploadQR(url,'filter-'+filterId);
   else{document.getElementById('qr-wrap').innerHTML='<div style="font-size:24px;opacity:.4">📲</div>';
        document.getElementById('qr-sub').textContent='Add ImgBB key for QR code.';}
