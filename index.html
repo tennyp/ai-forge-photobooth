@@ -561,33 +561,51 @@ async function transform(){
     document.getElementById('btn-fs').style.display='inline-block';
     document.getElementById('btn-snap').disabled=false;
 
-    // Auto-download collage once built (after ~3s for collage to finish)
-    setTimeout(()=>{
-      if(downloadUrl&&downloadUrl!==imgUrl){
-        const a=document.createElement('a');
-        a.href=downloadUrl;
-        a.download='AIForge-'+(t.name||'photo').replace(/\s+/g,'-')+'-'+Date.now()+'.jpg';
-        a.click();
-      }
-    },3500);
-
-    // Build collage in background (original + AI side by side)
+    // Auto-download framed collage once built
+    const _dlTheme=t.name||'photo';
     (async()=>{
-      try{
-        let aiUrl=imgUrl;
-        if(!imgUrl.startsWith('data:')){
-          const res=await fetch(imgUrl); const blob=await res.blob();
-          aiUrl=await new Promise(r=>{const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob);});
-        }
-        const fi=new Image();
-        fi.onload=()=>{downloadUrl=buildCollage(capturedCanvas,fi);};
-        fi.src=aiUrl;
-      }catch(e){console.warn('Collage failed',e);}
+      let waited=0;
+      while(downloadUrl===imgUrl&&waited<8000){await new Promise(r=>setTimeout(r,500));waited+=500;}
+      const dl=downloadUrl||imgUrl;
+      const a=document.createElement('a');
+      a.href=dl;
+      a.download='AIForge-'+_dlTheme.replace(/\s+/g,'-')+'-'+Date.now()+'.jpg';
+      a.click();
     })();
 
-    // QR via ImgBB
-    if(imgbbKey) uploadQR(imgUrl, t.name);
-    else{document.getElementById('qr-wrap').innerHTML='<div style="font-size:24px;opacity:.4">📲</div>'; document.getElementById('qr-sub').textContent='Add ImgBB key in setup for QR code.';}
+    // Build collage with AI Forge frame — then upload QR
+    (async()=>{
+      try{
+        // Load AI image with crossOrigin for canvas access
+        const fi=new Image();
+        fi.crossOrigin='anonymous';
+        await new Promise((res,rej)=>{
+          fi.onload=res;
+          fi.onerror=()=>{
+            // Fallback: try without crossOrigin
+            const fi2=new Image();
+            fi2.onload=()=>{try{downloadUrl=buildCollage(capturedCanvas,fi2);}catch(e){} res();};
+            fi2.onerror=rej;
+            fi2.src=imgUrl+'?t='+Date.now();
+          };
+          fi.src=imgUrl;
+        });
+        if(fi.complete&&fi.naturalWidth) downloadUrl=buildCollage(capturedCanvas,fi);
+        
+        // Now upload framed collage to ImgBB for QR
+        if(imgbbKey&&downloadUrl){
+          uploadQR(downloadUrl, t.name);
+        } else if(imgbbKey){
+          uploadQR(imgUrl, t.name);
+        }
+      }catch(e){
+        console.warn('Collage/QR failed',e);
+        if(imgbbKey) uploadQR(imgUrl, t.name);
+      }
+    })();
+
+    // QR uploaded inside collage builder above (gets the framed version)
+    if(!imgbbKey){document.getElementById('qr-wrap').innerHTML='<div style="font-size:24px;opacity:.4">📲</div>'; document.getElementById('qr-sub').textContent='Add ImgBB key in setup for QR code.';}
 
   }catch(e){
     clearInterval(piv); wildTheme=null;
