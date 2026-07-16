@@ -488,8 +488,8 @@ async function transform(){
   // Group mode: modify prompt to preserve ALL faces and dress everyone
   // Build prompt — strong face lock for both solo and group
   const facePrefix = groupMode
-    ? 'CRITICAL: Keep ALL faces in this photo 100% identical, do not change any face. Keep exact eyes nose mouth beard glasses skin of every person. '
-    : 'CRITICAL: Keep the face 100% identical, do not change the face at all. Keep exact eyes nose mouth beard glasses skin tone. ';
+    ? 'CRITICAL: Keep ALL faces in this photo 100% identical, do not change any face. Keep exact eyes nose mouth glasses skin tone of every person, do not add or change any facial hair. '
+    : 'CRITICAL: Keep the face 100% identical, do not change the face at all. Keep exact eyes nose mouth glasses skin tone, do not add or change any facial hair. ';
   const costumeSuffix = groupMode
     ? ' Apply matching costumes to ALL people in the group. Change the background completely.'
     : ' Change the costume and background completely.';
@@ -561,6 +561,16 @@ async function transform(){
     document.getElementById('btn-fs').style.display='inline-block';
     document.getElementById('btn-snap').disabled=false;
 
+    // Auto-download collage once built (after ~3s for collage to finish)
+    setTimeout(()=>{
+      if(downloadUrl&&downloadUrl!==imgUrl){
+        const a=document.createElement('a');
+        a.href=downloadUrl;
+        a.download='AIForge-'+(t.name||'photo').replace(/\s+/g,'-')+'-'+Date.now()+'.jpg';
+        a.click();
+      }
+    },3500);
+
     // Build collage in background (original + AI side by side)
     (async()=>{
       try{
@@ -613,10 +623,52 @@ function buildCollage(realCanvas, aiImg){
   ctx.fillStyle='rgba(93,202,165,.95)'; ctx.textAlign='right'; ctx.fillText('✨  AI TRANSFORMED',W-PAD-6,16);
   ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font='11px Arial'; ctx.textAlign='center'; ctx.textBaseline='bottom';
   ctx.fillText(eventLabel+' · AI Photo Booth',W/2,H-4);
+  // ── AI FORGE BRANDED FRAME ─────────────────────────────────────
+  // Top bar
+  const topBar=44;
+  const framed=document.createElement('canvas');
+  framed.width=W; framed.height=H+topBar+44;
+  const fc2=framed.getContext('2d');
+
+  // Dark background
+  fc2.fillStyle='#0D1117'; fc2.fillRect(0,0,W,framed.height);
+
+  // Top branding bar
+  const tg=fc2.createLinearGradient(0,0,W,0);
+  tg.addColorStop(0,'#0d2b24'); tg.addColorStop(0.5,'#1A7F6E'); tg.addColorStop(1,'#0d2b24');
+  fc2.fillStyle=tg; fc2.fillRect(0,0,W,topBar);
+
+  // AI Forge logo text in top bar
+  fc2.font='bold 20px Arial,sans-serif';
+  fc2.fillStyle='#5DCAA5';
+  fc2.textAlign='left'; fc2.textBaseline='middle';
+  fc2.fillText('⚡ AI FORGE', 16, topBar/2);
+  fc2.font='11px Arial,sans-serif';
+  fc2.fillStyle='rgba(255,255,255,0.5)';
+  fc2.textAlign='right';
+  fc2.fillText('AI Hackathon 2026  ·  Cochin', W-16, topBar/2);
+
+  // Draw the collage image below the top bar
+  fc2.drawImage(c, 0, topBar);
+
+  // Bottom bar with event details
+  const botBar=44;
+  const bg2=fc2.createLinearGradient(0,H+topBar,0,framed.height);
+  bg2.addColorStop(0,'#0d2b24'); bg2.addColorStop(1,'#0D1117');
+  fc2.fillStyle=bg2; fc2.fillRect(0,H+topBar,W,botBar);
+
+  // Teal divider line
+  fc2.fillStyle='rgba(93,202,165,0.6)'; fc2.fillRect(0,H+topBar,W,1);
+
+  // Bottom text
+  fc2.font='bold 12px Arial,sans-serif'; fc2.fillStyle='rgba(93,202,165,0.9)';
+  fc2.textAlign='center'; fc2.textBaseline='middle';
+  fc2.fillText(eventLabel||'AI Forge 2026 · Cochin', W/2, H+topBar+botBar/2);
+
   // Update TV canvas
-  const fc=document.getElementById('cnvfs');
-  if(fc){fc.width=W; fc.height=H; fc.getContext('2d').drawImage(c,0,0);}
-  return c.toDataURL('image/jpeg',.95);
+  const fctv=document.getElementById('cnvfs');
+  if(fctv){fctv.width=W; fctv.height=framed.height; fctv.getContext('2d').drawImage(framed,0,0);}
+  return framed.toDataURL('image/jpeg',.95);
 }
 
 // ═══════════════════════════════════════════════════════════════
