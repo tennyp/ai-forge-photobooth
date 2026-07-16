@@ -74,13 +74,7 @@ html,body{height:100%;overflow:hidden;background:var(--ink);font-family:-apple-s
 .aiimg{position:relative;border-radius:10px;overflow:hidden}
 .aiimg img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#000}
 .img-lbl{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);color:var(--tb);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;border:1px solid var(--teal)}
-.qr-box{background:var(--i2);border:1px solid var(--i3);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center}
-.qr-img-wrap{flex-shrink:0;background:#fff;border-radius:6px;padding:4px;width:78px;height:78px;display:flex;align-items:center;justify-content:center}
-.qr-spin{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3)}
 .spin-sm{width:14px;height:14px;border:2px solid var(--i3);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
-.qr-info{flex:1;min-width:0}
-.qr-title{font-size:12px;font-weight:600;margin-bottom:3px}
-.qr-sub{font-size:10px;color:var(--t2);line-height:1.5}
 .ractions{display:flex;gap:6px}
 .bact{flex:1;border-radius:8px;padding:9px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid}
 .bprim{background:var(--tl);border-color:var(--teal);color:var(--tb)}
@@ -136,12 +130,6 @@ html,body{height:100%;overflow:hidden;background:var(--ink);font-family:-apple-s
     </div>
     <div id="key-saved" style="display:none"><div class="saved-badge">✅ Key saved</div></div>
   </div>
-
-  <div class="box">
-    <div class="box-t">ImgBB Key <span style="font-weight:400;text-transform:none;color:var(--t3)">(optional backup for QR)</span></div>
-    <div class="hint">QR codes work automatically without this. Add ImgBB key only as backup.</div>
-    <input class="inp" type="password" id="imgbb-key" placeholder="Optional — imgbb.com → API" autocomplete="off">
-    <div id="imgbb-saved" style="display:none"><div class="saved-badge">✅ ImgBB key saved</div></div>
   </div>
 
   <div class="box">
@@ -213,16 +201,6 @@ html,body{height:100%;overflow:hidden;background:var(--ink);font-family:-apple-s
         <img id="img-after" alt="AI transformed">
         <div class="img-lbl">✨ AI Transformed</div>
       </div>
-      <div class="qr-box">
-        <div class="qr-img-wrap" id="qr-wrap">
-          <div class="qr-spin"><div class="spin-sm"></div></div>
-        </div>
-        <div class="qr-info">
-          <div class="qr-title">📲 Scan to save!</div>
-          <div class="qr-sub" id="qr-sub">Building your photo...</div>
-          <a id="qr-link" href="#" target="_blank" style="font-size:10px;color:var(--tb);display:none">Open photo →</a>
-        </div>
-      </div>
       <div class="ractions">
         <button class="bact bprim" onclick="showTVModal()">📺 Show on TV</button>
         <button class="bact bghost" onclick="sharePhoto()">📤 Share</button>
@@ -261,8 +239,8 @@ html,body{height:100%;overflow:hidden;background:var(--ink);font-family:-apple-s
 // ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
-let apiKey='', imgbbKey='', eventLabel='Redux AI Forge 2026 · Cochin';
-let stream=null, capturedCanvas=null, resultUrl=null, downloadUrl=null, qrUrl=null;
+let apiKey='', eventLabel='Redux AI Forge 2026 · Cochin';
+let stream=null, capturedCanvas=null, resultUrl=null, downloadUrl=null;
 let theme='irontech', activeCat='all', wildTheme=null, groupMode=false;
 
 // ═══════════════════════════════════════════════════════════════
@@ -375,11 +353,9 @@ function clearKeys(){
 }
 function launch(){
   const raw=document.getElementById('api-key').value.trim();
-  const ib=document.getElementById('imgbb-key').value.trim();
-  const lb=document.getElementById('event-label').value.trim()||'AI Forge 2026';
+    const lb=document.getElementById('event-label').value.trim()||'AI Forge 2026';
   if(raw && raw!=='••••••••••••••••'){apiKey=raw; localStorage.setItem('afk',raw);}
-  if(ib && ib!=='••••••••••••••••'){imgbbKey=ib; localStorage.setItem('afib',ib);}
-  eventLabel=lb; localStorage.setItem('aflb',lb);
+    eventLabel=lb; localStorage.setItem('aflb',lb);
   if(!apiKey){alert('Please enter your fal.ai API key.');return;}
   switchScr('booth'); buildCatTabs(); buildThemeGrid(); startCamera();
 }
@@ -561,6 +537,24 @@ async function transform(){
     document.getElementById('btn-fs').style.display='inline-block';
     document.getElementById('btn-snap').disabled=false;
 
+    // Auto-save: wait for framed collage then download
+    (async()=>{
+      let waited=0;
+      while(downloadUrl===imgUrl&&waited<8000){await new Promise(r=>setTimeout(r,400));waited+=400;}
+      try{
+        const dl=downloadUrl||imgUrl;
+        let blob;
+        if(dl.startsWith('data:')){const r=await fetch(dl);blob=await r.blob();}
+        else{const r=await fetch(dl,{mode:'cors'});blob=await r.blob();}
+        const blobUrl=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=blobUrl;
+        a.download='AIForge-'+(t.name||'Photo').replace(/\s+/g,'-')+'-'+Date.now()+'.jpg';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(blobUrl),10000);
+      }catch(e){console.warn('Auto-save failed',e);}
+    })();
+
     // Build collage with AI Forge frame — then upload QR
     (async()=>{
       try{
@@ -587,22 +581,9 @@ async function transform(){
           };
           fi.src=imgUrl;
         });
-        if(fi.complete&&fi.naturalWidth) downloadUrl=buildCollage(capturedCanvas,fi);
-        
-        // Now upload framed collage to ImgBB for QR
-        if(imgbbKey&&downloadUrl){
-          uploadQR(downloadUrl, t.name);
-        } else if(imgbbKey){
-          uploadQR(imgUrl, t.name);
-        }
-      }catch(e){
-        console.warn('Collage/QR failed',e);
-        if(imgbbKey) uploadQR(imgUrl, t.name);
-      }
+        if(fi.complete&&fi.naturalWidth) downloadUrl=await buildCollage(capturedCanvas,fi);
+      }catch(e){console.warn('Collage failed',e);}
     })();
-
-    // QR uploaded inside collage builder above (gets the framed version)
-    if(!imgbbKey){document.getElementById('qr-wrap').innerHTML='<div style="font-size:24px;opacity:.4">📲</div>'; document.getElementById('qr-sub').textContent='Add ImgBB key in setup for QR code.';}
 
   }catch(e){
     clearInterval(piv); wildTheme=null;
@@ -694,64 +675,6 @@ async function buildCollage(realCanvas, aiImg){
   return framed.toDataURL('image/jpeg',.95);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// QR CODE — uses freeimage.host (no key needed) or ImgBB as fallback
-// ═══════════════════════════════════════════════════════════════
-async function uploadQR(imgUrl, name){
-  const qw=document.getElementById('qr-wrap');
-  const qs=document.getElementById('qr-sub');
-  qw.innerHTML='<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3)"><div class="spin-sm"></div>Generating QR...</div>';
-
-  try{
-    // Convert image to base64 blob
-    let b64img;
-    if(imgUrl.startsWith('data:')){
-      b64img=imgUrl.split(',')[1];
-    } else {
-      const res=await fetch(imgUrl);
-      const blob=await res.blob();
-      b64img=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result.split(',')[1]);fr.readAsDataURL(blob);});
-    }
-
-    let photoUrl=null;
-
-    // Try freeimage.host first (no API key needed)
-    try{
-      const fd=new FormData();
-      fd.append('source',b64img);
-      fd.append('format','json');
-      const r=await fetch('https://freeimage.host/api/1/upload?key=6d207e02198a847aa98d0a2a901485a5',{method:'POST',body:fd});
-      const d=await r.json();
-      if(d.status_code===200) photoUrl=d.image?.url||d.image?.display_url;
-    }catch(e1){console.warn('freeimage.host failed',e1);}
-
-    // Fallback to ImgBB if key is set
-    if(!photoUrl && imgbbKey){
-      const fd=new FormData();
-      fd.append('key',imgbbKey);
-      fd.append('image',b64img);
-      fd.append('name','AIForge-'+Date.now());
-      fd.append('expiration','86400');
-      const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
-      const d=await r.json();
-      if(d.success) photoUrl=d.data?.url;
-    }
-
-    if(!photoUrl) throw new Error('Upload failed');
-
-    // Generate QR code
-    const qrApi=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(photoUrl)}&color=0D1117&bgcolor=FFFFFF`;
-    qw.innerHTML=`<img src="${qrApi}" style="width:70px;height:70px;border-radius:4px" alt="QR">`;
-    qs.textContent='Scan to save your photo!';
-    const ql=document.getElementById('qr-link');
-    ql.href=photoUrl; ql.style.display='block';
-
-  }catch(e){
-    qw.innerHTML='<div style="font-size:22px;opacity:.35">📲</div>';
-    qs.textContent='Use ↓ Save to download instead.';
-    console.warn('QR upload failed',e);
-  }
-}
 
 
 // ═══════════════════════════════════════════════════════════════
@@ -930,9 +853,7 @@ function applyFilter(filterId){
   showP('card');
   document.getElementById('btn-fs').style.display='inline-block';
   document.getElementById('btn-snap').disabled=false;
-  if(imgbbKey) uploadQR(url,'filter-'+filterId);
-  else{document.getElementById('qr-wrap').innerHTML='<div style="font-size:24px;opacity:.4">📲</div>';
-       document.getElementById('qr-sub').textContent='Add ImgBB key for QR code.';}
+
 }
 
 async function openFS(){
