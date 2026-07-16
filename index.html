@@ -581,12 +581,21 @@ async function transform(){
         fi.crossOrigin='anonymous';
         await new Promise((res,rej)=>{
           fi.onload=res;
-          fi.onerror=()=>{
-            // Fallback: try without crossOrigin
-            const fi2=new Image();
-            fi2.onload=()=>{try{downloadUrl=buildCollage(capturedCanvas,fi2);}catch(e){} res();};
-            fi2.onerror=rej;
-            fi2.src=imgUrl+'?t='+Date.now();
+          fi.onerror=async ()=>{
+            // CORS failed — fetch as blob and use as object URL
+            try{
+              const res=await fetch(imgUrl);
+              const blob=await res.blob();
+              const objUrl=URL.createObjectURL(blob);
+              const fi2=new Image();
+              fi2.onload=async ()=>{
+                try{downloadUrl=await buildCollage(capturedCanvas,fi2);}catch(e){downloadUrl=imgUrl;}
+                URL.revokeObjectURL(objUrl);
+                res();
+              };
+              fi2.onerror=()=>{downloadUrl=imgUrl;res();};
+              fi2.src=objUrl;
+            }catch(e2){downloadUrl=imgUrl;res();}
           };
           fi.src=imgUrl;
         });
@@ -956,15 +965,36 @@ async function openFS(){
   }
 }
 function closeFS(){switchScr('booth'); document.exitFullscreen?.().catch(()=>{});}
-function dlResult(){
+async function dlResult(){
   const dl=downloadUrl||resultUrl; if(!dl)return;
-  const a=document.createElement('a'); a.href=dl; a.download='ai-forge-'+Date.now()+'.jpg'; a.click();
+  try{
+    let blobUrl=dl;
+    if(!dl.startsWith('data:')){
+      // Fetch remote URL as blob to allow cross-origin download
+      const res=await fetch(dl);
+      const blob=await res.blob();
+      blobUrl=URL.createObjectURL(blob);
+    }
+    const a=document.createElement('a');
+    a.href=blobUrl;
+    a.download='AIForge-'+Date.now()+'.jpg';
+    a.click();
+    if(blobUrl!==dl) setTimeout(()=>URL.revokeObjectURL(blobUrl),5000);
+  }catch(e){
+    // Last resort: open in new tab
+    window.open(dl,'_blank');
+  }
 }
 async function sharePhoto(){
   const dl=downloadUrl||resultUrl; if(!dl)return;
   try{
-    const blob=await (await fetch(dl)).blob();
-    const file=new File([blob],'ai-forge.jpg',{type:'image/jpeg'});
+    let blob;
+    if(dl.startsWith('data:')){
+      const res=await fetch(dl); blob=await res.blob();
+    } else {
+      blob=await (await fetch(dl)).blob();
+    }
+    const file=new File([blob],'AIForge-Photo.jpg',{type:'image/jpeg'});
     if(navigator.share&&navigator.canShare?.({files:[file]})){
       await navigator.share({files:[file],title:'Redux AI Forge Photo Booth',text:'My AI transformation at Redux AI Forge 2026!'});
     } else dlResult();
