@@ -509,7 +509,8 @@ async function transform(){
             image_url:'data:image/jpeg;base64,'+b64,
             prompt:basePrompt,
             num_inference_steps:35,
-            guidance_scale:10
+            guidance_scale: groupMode ? 4 : 10,
+            strength: groupMode ? 0.45 : undefined
           })
         });
         if(!r.ok){
