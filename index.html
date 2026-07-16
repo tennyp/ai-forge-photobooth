@@ -138,8 +138,9 @@ html,body{height:100%;overflow:hidden;background:var(--ink);font-family:-apple-s
   </div>
 
   <div class="box">
-    <div class="box-t">ImgBB Key <span style="font-weight:400;text-transform:none;color:var(--t3)">(free — for QR code)</span></div>
-    <input class="inp" type="password" id="imgbb-key" placeholder="Free at imgbb.com → API" autocomplete="off">
+    <div class="box-t">ImgBB Key <span style="font-weight:400;text-transform:none;color:var(--t3)">(optional backup for QR)</span></div>
+    <div class="hint">QR codes work automatically without this. Add ImgBB key only as backup.</div>
+    <input class="inp" type="password" id="imgbb-key" placeholder="Optional — imgbb.com → API" autocomplete="off">
     <div id="imgbb-saved" style="display:none"><div class="saved-badge">✅ ImgBB key saved</div></div>
   </div>
 
@@ -697,32 +698,64 @@ async function buildCollage(realCanvas, aiImg){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// QR CODE
+// QR CODE — uses freeimage.host (no key needed) or ImgBB as fallback
 // ═══════════════════════════════════════════════════════════════
 async function uploadQR(imgUrl, name){
-  const qw=document.getElementById('qr-wrap'), qs=document.getElementById('qr-sub');
+  const qw=document.getElementById('qr-wrap');
+  const qs=document.getElementById('qr-sub');
+  qw.innerHTML='<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3)"><div class="spin-sm"></div>Generating QR...</div>';
+
   try{
+    // Convert image to base64 blob
     let b64img;
-    if(imgUrl.startsWith('data:')){b64img=imgUrl.split(',')[1];}
-    else{const r=await fetch(imgUrl); const bl=await r.blob(); b64img=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result.split(',')[1]);fr.readAsDataURL(bl);});}
-    const fd=new FormData();
-    fd.append('key',imgbbKey); fd.append('image',b64img);
-    fd.append('name','AIForge-'+name.replace(/\s+/g,'-')+'-'+Date.now());
-    fd.append('expiration','86400');
-    const resp=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
-    const data=await resp.json();
-    if(!data.success)throw new Error('ImgBB failed');
-    const url=data.data.url;
-    qrUrl=url;
-    const qrApi=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}&color=0D1117&bgcolor=FFFFFF`;
-    qw.innerHTML=`<img src="${qrApi}" style="width:70px;height:70px" alt="QR">`;
-    qs.textContent='Scan to save photo! (24hr link)';
-    document.getElementById('qr-link').href=url; document.getElementById('qr-link').style.display='block';
+    if(imgUrl.startsWith('data:')){
+      b64img=imgUrl.split(',')[1];
+    } else {
+      const res=await fetch(imgUrl);
+      const blob=await res.blob();
+      b64img=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result.split(',')[1]);fr.readAsDataURL(blob);});
+    }
+
+    let photoUrl=null;
+
+    // Try freeimage.host first (no API key needed)
+    try{
+      const fd=new FormData();
+      fd.append('source',b64img);
+      fd.append('format','json');
+      const r=await fetch('https://freeimage.host/api/1/upload?key=6d207e02198a847aa98d0a2a901485a5',{method:'POST',body:fd});
+      const d=await r.json();
+      if(d.status_code===200) photoUrl=d.image?.url||d.image?.display_url;
+    }catch(e1){console.warn('freeimage.host failed',e1);}
+
+    // Fallback to ImgBB if key is set
+    if(!photoUrl && imgbbKey){
+      const fd=new FormData();
+      fd.append('key',imgbbKey);
+      fd.append('image',b64img);
+      fd.append('name','AIForge-'+Date.now());
+      fd.append('expiration','86400');
+      const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
+      const d=await r.json();
+      if(d.success) photoUrl=d.data?.url;
+    }
+
+    if(!photoUrl) throw new Error('Upload failed');
+
+    // Generate QR code
+    const qrApi=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(photoUrl)}&color=0D1117&bgcolor=FFFFFF`;
+    qw.innerHTML=`<img src="${qrApi}" style="width:70px;height:70px;border-radius:4px" alt="QR">`;
+    qs.textContent='Scan to save your photo!';
+    const ql=document.getElementById('qr-link');
+    ql.href=photoUrl; ql.style.display='block';
+
   }catch(e){
     qw.innerHTML='<div style="font-size:22px;opacity:.35">📲</div>';
-    qs.textContent='Upload failed — use Save button.';
+    qs.textContent='Use ↓ Save to download instead.';
+    console.warn('QR upload failed',e);
   }
 }
+
 
 // ═══════════════════════════════════════════════════════════════
 // ACTIONS
