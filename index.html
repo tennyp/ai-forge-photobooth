@@ -333,9 +333,8 @@ const WILD=[
 // SETUP
 // ═══════════════════════════════════════════════════════════════
 function loadSaved(){
-  const k=localStorage.getItem('afk'), ib=localStorage.getItem('afib'), lb=localStorage.getItem('aflb');
+  const k=localStorage.getItem('afk'), lb=localStorage.getItem('aflb');
   if(k){apiKey=k; document.getElementById('api-key').value='••••••••••••••••'; document.getElementById('key-saved').style.display='block';}
-  if(ib){imgbbKey=ib; document.getElementById('imgbb-key').value='••••••••••••••••'; document.getElementById('imgbb-saved').style.display='block';}
   if(lb){document.getElementById('event-label').value=lb; eventLabel=lb;}
 }
 function toggleK(btn){
@@ -345,7 +344,7 @@ function toggleK(btn){
 }
 function clearKeys(){
   if(!confirm('Clear all saved keys?'))return;
-  localStorage.removeItem('afk'); localStorage.removeItem('afib'); localStorage.removeItem('aflb');
+  localStorage.removeItem('afk'); localStorage.removeItem('aflb');
   document.getElementById('api-key').value=''; document.getElementById('imgbb-key').value='';
   document.getElementById('event-label').value='Redux AI Forge 2026 · Cochin';
   document.getElementById('key-saved').style.display='none'; document.getElementById('imgbb-saved').style.display='none';
@@ -353,9 +352,9 @@ function clearKeys(){
 }
 function launch(){
   const raw=document.getElementById('api-key').value.trim();
-    const lb=document.getElementById('event-label').value.trim()||'AI Forge 2026';
+  const lb=document.getElementById('event-label').value.trim()||'Redux AI Forge 2026';
   if(raw && raw!=='••••••••••••••••'){apiKey=raw; localStorage.setItem('afk',raw);}
-    eventLabel=lb; localStorage.setItem('aflb',lb);
+  eventLabel=lb; localStorage.setItem('aflb',lb);
   if(!apiKey){alert('Please enter your fal.ai API key.');return;}
   switchScr('booth'); buildCatTabs(); buildThemeGrid(); startCamera();
 }
